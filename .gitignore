@@ -1,6 +1,11 @@
+# runtime genere par ZeroClaw (ne pas versionner)
+agent-gen/
+# caches / bytecode
 **/__pycache__/
 *.pyc
-workspace/repo/
-agent-gen/agents/
-agent-gen/**/*.sqlite
+# bases et etats runtime
+*.db
+*.sqlite
 *.log
+# workspace de demonstration
+workspace/repo/
