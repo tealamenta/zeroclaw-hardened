@@ -1,0 +1,46 @@
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "defaultErrnoRet": 1,
+  "archMap": [
+    {
+      "architecture": "SCMP_ARCH_X86_64",
+      "subArchitectures": ["SCMP_ARCH_X86", "SCMP_ARCH_X32"]
+    },
+    {
+      "architecture": "SCMP_ARCH_AARCH64",
+      "subArchitectures": ["SCMP_ARCH_ARM"]
+    }
+  ],
+  "comment": "Default-deny. Only the syscalls a static Rust/tokio/rustls binary needs to do file I/O + TCP are allowed. Escape/privilege/host-tamper syscalls (mount, ptrace, unshare, setns, pivot_root, chroot, keyctl, bpf, perf_event_open, kexec_load, *_module, iopl/ioperm, swapon/off, reboot, settimeofday, clock_settime, sethostname, quotactl, acct ...) are absent => denied. If the agent fails to start, find the blocked syscall with `dmesg` or `strace -f -e trace=all` and ADD it here.",
+  "syscalls": [
+    {
+      "action": "SCMP_ACT_ALLOW",
+      "names": [
+        "accept4", "access", "arch_prctl", "bind", "brk", "capget", "capset",
+        "chdir", "chmod", "clock_getres", "clock_gettime", "clock_nanosleep",
+        "clone", "clone3", "close", "close_range", "connect", "dup", "dup2",
+        "dup3", "epoll_create1", "epoll_ctl", "epoll_pwait", "epoll_wait",
+        "eventfd2", "execve", "exit", "exit_group", "faccessat", "faccessat2",
+        "fadvise64", "fchdir", "fchmod", "fchmodat", "fcntl", "fdatasync",
+        "flock", "fstat", "fstatfs", "fsync", "ftruncate", "futex", "getcwd",
+        "getdents64", "getegid", "geteuid", "getgid", "getgroups", "getpeername",
+        "getpgrp", "getpid", "getppid", "getrandom", "getresgid", "getresuid",
+        "getrlimit", "getrusage", "getsockname", "getsockopt", "gettid",
+        "gettimeofday", "getuid", "ioctl", "kill", "listen", "lseek", "lstat",
+        "madvise", "membarrier", "memfd_create", "mkdir", "mkdirat", "mmap",
+        "mprotect", "mremap", "munmap", "nanosleep", "newfstatat", "openat",
+        "openat2", "pipe2", "poll", "ppoll", "prctl", "pread64", "prlimit64",
+        "pwrite64", "read", "readlink", "readlinkat", "readv", "recvfrom",
+        "recvmsg", "rename", "renameat", "renameat2", "rseq", "rt_sigaction",
+        "rt_sigprocmask", "rt_sigreturn", "rt_sigtimedwait", "sched_getaffinity",
+        "sched_getparam", "sched_getscheduler", "sched_setaffinity",
+        "sched_yield", "select", "sendmsg", "sendto", "set_robust_list",
+        "set_tid_address", "setgid", "setgroups", "setsockopt", "setuid",
+        "shutdown", "sigaltstack", "socket", "socketpair", "stat", "statfs",
+        "statx", "sysinfo", "tgkill", "timerfd_create", "timerfd_gettime",
+        "timerfd_settime", "truncate", "umask", "uname", "unlink", "unlinkat",
+        "wait4", "write", "writev"
+      ]
+    }
+  ]
+}

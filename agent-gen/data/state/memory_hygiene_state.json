@@ -1,0 +1,12 @@
+{
+  "last_run_at": "2026-07-01T20:59:18.276494670+00:00",
+  "last_report": {
+    "archived_memory_files": 0,
+    "archived_session_files": 0,
+    "purged_memory_archives": 0,
+    "purged_session_archives": 0,
+    "pruned_conversation_rows": 0,
+    "pruned_daily_rows": 0,
+    "pruned_core_rows": 0
+  }
+}

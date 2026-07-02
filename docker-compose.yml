@@ -1,0 +1,98 @@
+name: zeroclaw-hardened
+
+# =====================================================================
+#  AGENT DURCI  (état "APRÈS")
+#  Config/état en lecture seule, root read-only, cap-drop, seccomp,
+#  egress interne uniquement, limites de ressources.
+# =====================================================================
+
+x-agent-image: &agent_image zeroclaw-hardened:latest
+
+services:
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: zc-ollama
+    networks: [agent_net, pull_net]      # pull_net : accès Internet pour TÉLÉCHARGER le modèle
+    volumes:
+      - ollama_models:/root/.ollama       # le modèle est mis en cache ici (téléchargé une fois)
+    restart: unless-stopped
+    # Pas de "ports:" publiés : l'API n'est joignable que DANS agent_net.
+
+  agent:
+    image: *agent_image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zc-agent
+    depends_on: [ollama]
+    networks: [agent_net]                 # internal:true => AUCUNE route vers Internet
+    user: "10001:10001"
+    command: ["sleep", "infinity"]
+
+    # ---- Partitionnement du système de fichiers : cœur du projet ----
+    read_only: true                       # racine entière en lecture seule
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /run:rw,noexec,nosuid,size=16m
+      - /home/zeroclaw/.zeroclaw/cache:rw,noexec,nosuid,size=64m
+      - /home/zeroclaw/.zeroclaw/logs:rw,noexec,nosuid,size=32m
+    volumes:
+      # --- CONFIG / ÉTAT : lecture seule (un agent compromis ne peut pas réécrire) ---
+      - ./agent/config.toml:/home/zeroclaw/.zeroclaw/config.toml:ro       # settings + hooks
+      - ./agent/instructions.md:/home/zeroclaw/.zeroclaw/instructions.md:ro  # CLAUDE.md analog
+      - ./agent/mcp.json:/home/zeroclaw/.zeroclaw/mcp.json:ro             # .mcp.json analog
+      - ./agent/skills:/home/zeroclaw/.zeroclaw/skills:ro                 # skills (SKILL.md)
+      # --- WORKSPACE : lecture-écriture (le code à traiter) ---
+      - ./workspace:/home/zeroclaw/.zeroclaw/workspace:rw
+      # --- MÉMOIRE : lecture-écriture mais ISOLÉE de la config (volume dédié) ---
+      - zeroclaw_memory:/home/zeroclaw/.zeroclaw/memory:rw
+
+    # ---- Surface noyau / privilèges ----
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./seccomp.json
+
+    # ---- Bornes de ressources (DoS / fork-bomb / runaway) ----
+    mem_limit: 1g
+    pids_limit: 256
+    cpus: 1.5
+    restart: "no"
+
+  # ============ BONUS (profil "bonus") : exfil via domaine autorisé ============
+  # Démarré seulement avec :  docker compose --profile bonus up -d
+  exfil-sink:
+    image: python:3.12-slim
+    container_name: zc-exfil-sink
+    profiles: [bonus]
+    networks: [egress_net]
+    volumes:
+      - ./attack/exfil_sink.py:/app/exfil_sink.py:ro
+      - exfil_data:/data
+    command: ["python3", "/app/exfil_sink.py", "9000"]
+
+  egress-proxy:
+    image: python:3.12-slim
+    container_name: zc-egress-proxy
+    profiles: [bonus]
+    networks: [egress_net]
+    environment:
+      - UPSTREAM=http://exfil-sink:9000
+    volumes:
+      - ./proxy/egress_proxy.py:/app/egress_proxy.py:ro
+    command: ["python3", "/app/egress_proxy.py", "8080"]
+
+networks:
+  agent_net:
+    driver: bridge
+    internal: true                        # <-- pas de passerelle Internet pour l'agent
+  pull_net:
+    driver: bridge                        # Internet (uniquement pour ollama : pull du modèle)
+  egress_net:
+    driver: bridge
+
+volumes:
+  ollama_models:
+  zeroclaw_memory:
+  exfil_data:

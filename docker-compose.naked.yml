@@ -1,0 +1,72 @@
+name: zeroclaw-naked
+
+# =====================================================================
+#  AGENT NU  (état "AVANT")
+#  AUCUN durcissement : config inscriptible, root inscriptible, toutes
+#  capabilities, seccomp désactivé, Internet ouvert, secret en clair.
+#  Sert UNIQUEMENT de base vulnérable pour la démonstration avant/après.
+#  Les garde-fous internes de ZeroClaw sont aussi neutralisés (YOLO) afin
+#  d'isoler la variable testée = VOTRE couche Docker, pas la sécu de l'agent.
+# =====================================================================
+
+x-agent-image: &agent_image zeroclaw-hardened:latest
+
+services:
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: zc-ollama-naked
+    networks: [open_net]
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+  agent:
+    image: *agent_image                   # même image que le durci : seule la config de run change
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zc-agent-naked
+    depends_on: [ollama]
+    networks: [open_net]                  # Internet ouvert
+    user: "10001:10001"
+    command: ["sleep", "infinity"]
+    environment:
+      - ZEROCLAW_YOLO=1                    # garde-fous internes désactivés (baseline non contenue)
+      - FAKE_SECRET=FAKE_SECRET_DEADBEEF12345   # ANTI-PATTERN : secret injecté dans le conteneur
+
+    # ---- AUCUN partitionnement ----
+    read_only: false                      # racine inscriptible
+    volumes:
+      - ./agent/config.toml:/home/zeroclaw/.zeroclaw/config.toml:rw       # INSCRIPTIBLE
+      - ./agent/instructions.md:/home/zeroclaw/.zeroclaw/instructions.md:rw
+      - ./agent/mcp.json:/home/zeroclaw/.zeroclaw/mcp.json:rw
+      - ./agent/skills:/home/zeroclaw/.zeroclaw/skills:rw
+      - ./workspace:/home/zeroclaw/.zeroclaw/workspace:rw
+      - zeroclaw_memory:/home/zeroclaw/.zeroclaw/memory:rw
+
+    # ---- Isolation désactivée ----
+    cap_drop: []                          # aucune capability retirée
+    security_opt:
+      - seccomp:unconfined                # seccomp désactivé
+    # (pas de no-new-privileges, pas de limites de ressources)
+    restart: "no"
+
+  # cible d'exfiltration locale (joignable par l'agent nu)
+  exfil-sink:
+    image: python:3.12-slim
+    container_name: zc-exfil-sink-naked
+    networks: [open_net]
+    volumes:
+      - ./attack/exfil_sink.py:/app/exfil_sink.py:ro
+      - exfil_data:/data
+    command: ["python3", "/app/exfil_sink.py", "9000"]
+
+networks:
+  open_net:
+    driver: bridge                        # bridge standard => Internet ouvert
+
+volumes:
+  ollama_models:
+  zeroclaw_memory:
+  exfil_data:

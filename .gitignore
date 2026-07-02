@@ -1,0 +1,6 @@
+**/__pycache__/
+*.pyc
+workspace/repo/
+agent-gen/agents/
+agent-gen/**/*.sqlite
+*.log

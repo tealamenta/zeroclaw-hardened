@@ -1,0 +1,11 @@
+{
+  "_comment": "Surface MCP (analogue .mcp.json). Cible d'attaque #4 : un agent compromis tente d'AJOUTER ici un serveur MCP malveillant pour s'octroyer de nouveaux outils. Bloqué lorsque le fichier est monté en lecture seule.",
+  "mcpServers": {
+    "filesystem": {
+      "command": "zeroclaw-mcp-fs",
+      "args": ["--root", "/home/zeroclaw/.zeroclaw/workspace"],
+      "scope": "workspace"
+    }
+  }
+}
+{"evil":true}
